@@ -10,22 +10,12 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
-import android.location.LocationListener;
-import android.location.LocationManager;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.util.Log;
-import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.LocationSettingsRequest;
-import com.google.android.gms.location.LocationSettingsResponse;
-import com.google.android.gms.location.SettingsClient;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -35,7 +25,6 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.maps.android.SphericalUtil;
 
 import java.util.ArrayList;
@@ -220,99 +209,50 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
         }
-
-        if (event.sensor == accelSensor) {
-            if (event.values[2] <= -7.5 || event.values[2] >= 7.5) {
-                //This is where the gyroscope in the z axis is calculated
-                long currentTime = System.currentTimeMillis();  //Keeps track of the system time
-                long lastUpdate = 0;    //This will keep track of how much time has passed between readings
-                int num = 0;                //Keep track of the number of readings it currently has for the average
-                //These are where the different gyro readings are held
-                double zGyro1 = 0, zGyro2 = 0, zGyro3 = 0, zGyro4 = 0, zGyro5 = 0, zGyro6 = 0, zGyro7 = 0, zGyro8 = 0;
-                if (event.sensor == gyroSensor) {
-                    if (currentTime - lastUpdate < 91) {   //1st gyro reading in the z-axis
-                        zGyro1 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 191) {  //2nd gyro reading
-                        zGyro2 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 291) {  //3rd gyro reading
-                        zGyro3 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 391) {  //4th gyro reading
-                        zGyro4 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 491) {  //5th gyro reading
-                        zGyro5 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 591) {  //6th gyro reading
-                        zGyro6 = event.values[2];
-                        num++;
-                        lastUpdate = currentTime; //Since this is the last reading I want to collect, I reset the time counter to 0
-                        //by having it equal to the currentTime
-                    } else if (currentTime - lastUpdate > 691) {  //7th gyro reading
-                        zGyro7 = event.values[2];
-                        //num++;
-                        //lastUpdate = currentTime;
-                    } else if (currentTime - lastUpdate > 791) {  //8th gyro reading
-                        zGyro8 = event.values[2];
-                        num++;
-                        //lastUpdate = currentTime;
-                    }
-                    //The sensitivity can be adjusted by messing with the time in the if statements
-
-                    //lastGyro = filter(event.values.cl, lastGyro); //Attempt to filter results
-                    //The accuracy can be adjusted by getting more readings and adding them to the average
-                    zGyro = ((zGyro1 + zGyro2 + zGyro3 + zGyro4 + zGyro5 + zGyro6) / num) * -(180.0 / 3.14);
-                    currentDirection += zGyro;  //Add changes in direction to the currentDirection
-                    //Log.d("tagTest", "onSensorChanged: " + zGyro);    //For debugging purposes
-                }
-            } else if (event.values[1] <= -5.5 || event.values[1] >= 5.5) {
-                //This is where the gyroscope in the z axis is calculated
-                long currentTime = System.currentTimeMillis();  //Keeps track of the system time
-                long lastUpdate = 0;    //This will keep track of how much time has passed between readings
-                int num = 0;                //Keep track of the number of readings it currently has for the average
-                //These are where the different gyro readings are held
-                double yGyro1 = 0, yGyro2 = 0, yGyro3 = 0, yGyro4 = 0, yGyro5 = 0, yGyro6 = 0, yGyro7 = 0, yGyro8 = 0;
-                if (event.sensor == gyroSensor) {
-                    if (currentTime - lastUpdate < 91) {   //1st gyro reading in the z-axis
-                        yGyro1 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 191) {  //2nd gyro reading
-                        yGyro2 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 291) {  //3rd gyro reading
-                        yGyro3 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 391) {  //4th gyro reading
-                        yGyro4 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 491) {  //5th gyro reading
-                        yGyro5 = event.values[2];
-                        num++;
-                    } else if (currentTime - lastUpdate > 591) {  //6th gyro reading
-                        yGyro6 = event.values[2];
-                        num++;
-                        lastUpdate = currentTime; //Since this is the last reading I want to collect, I reset the time counter to 0
-                        //by having it equal to the currentTime
-                    } else if (currentTime - lastUpdate > 691) {  //7th gyro reading
-                        yGyro7 = event.values[2];
-                        //num++;
-                        //lastUpdate = currentTime;
-                    } else if (currentTime - lastUpdate > 791) {  //8th gyro reading
-                        yGyro8 = event.values[2];
-                        num++;
-                        //lastUpdate = currentTime;
-                    }
-                    //The sensitivity can be adjusted by messing with the time in the if statements
-
-                    //lastGyro = filter(event.values.cl, lastGyro); //Attempt to filter results
-                    //The accuracy can be adjusted by getting more readings and adding them to the average
-                    yGyro = ((yGyro1 + yGyro2 + yGyro3 + yGyro4 + yGyro5 + yGyro6) / num) * -(180.0 / 3.14);
-                    currentDirection += yGyro;  //Add changes in direction to the currentDirection
-                    //Log.d("tagTest", "onSensorChanged: " + zGyro);    //For debugging purposes
-                }
+        
+        //This is where the gyroscope in the z axis is calculated
+        long currentTime = System.currentTimeMillis();  //Keeps track of the system time
+        long lastUpdate = 0;    //This will keep track of how much time has passed between readings
+        int num = 0;                //Keep track of the number of readings it currently has for the average
+        //These are where the different gyro readings are held
+        double zGyro1 = 0, zGyro2 = 0, zGyro3 = 0, zGyro4 = 0, zGyro5 = 0, zGyro6 = 0, zGyro7 = 0, zGyro8 = 0;
+        if (event.sensor == gyroSensor) {
+            if (currentTime - lastUpdate < 91) {   //1st gyro reading in the z-axis
+                zGyro1 = event.values[2];
+                num++;
+            } else if (currentTime - lastUpdate > 191) {  //2nd gyro reading
+                zGyro2 = event.values[2];
+                num++;
+            } else if (currentTime - lastUpdate > 291) {  //3rd gyro reading
+                zGyro3 = event.values[2];
+                num++;
+            } else if (currentTime - lastUpdate > 391) {  //4th gyro reading
+                zGyro4 = event.values[2];
+                num++;
+            } else if (currentTime - lastUpdate > 491) {  //5th gyro reading
+                zGyro5 = event.values[2];
+                num++;
+            } else if (currentTime - lastUpdate > 591) {  //6th gyro reading
+                zGyro6 = event.values[2];
+                num++;
+                lastUpdate = currentTime; //Since this is the last reading I want to collect, I reset the time counter to 0
+                //by having it equal to the currentTime
+            } else if (currentTime - lastUpdate > 691) {  //7th gyro reading
+                zGyro7 = event.values[2];
+                //num++;
+                //lastUpdate = currentTime;
+            } else if (currentTime - lastUpdate > 791) {  //8th gyro reading
+                zGyro8 = event.values[2];
+                num++;
+                //lastUpdate = currentTime;
             }
+            //The sensitivity can be adjusted by messing with the time in the if statements
+
+            //lastGyro = filter(event.values.cl, lastGyro); //Attempt to filter results
+            //The accuracy can be adjusted by getting more readings and adding them to the average
+            zGyro = ((zGyro1 + zGyro2 + zGyro3 + zGyro4 + zGyro5 + zGyro6) / num) * -(180.0 / 3.14);
+            currentDirection += zGyro;  //Add changes in direction to the currentDirection
+            //Log.d("tagTest", "onSensorChanged: " + zGyro);    //For debugging purposes
         }
 
 

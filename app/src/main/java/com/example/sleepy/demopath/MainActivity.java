@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private ArrayList<LatLng> userPath;
 
-    private double stepLength = 0.7099996;//<-Sleepy's step, based off of calculations with a ruler: Kelvin's step ->0.6923532; in meters
+    private double stepLength = 0.839216;//0.6923532;//0.7099996;//<-Sleepy's step, based off of calculations with a ruler: Kelvin's step ->0.6923532; in meters
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -211,8 +211,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         }
 
+        //double readings = event.values[2];
 
+        if (event.sensor == gyroSensor) {
+            zGyro = (event.values[2] / 5.69) * -(180.0 / Math.PI);
+            currentDirection += zGyro;
+            //Log.d("Print", "onSensorChanged: " + zGyro);
+        }
 
+        /*
         //This is where the gyroscope in the z axis is calculated
         long currentTime = System.currentTimeMillis();  //Keeps track of the system time
         long lastUpdate = currentTime - System.currentTimeMillis();    //This will keep track of how much time has passed between readings
@@ -222,24 +229,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         double zGyro1 = 0, zGyro2 = 0, zGyro3 = 0, zGyro4 = 0, zGyro5 = 0, zGyro6 = 0, zGyro7 = 0, zGyro8 = 0;
         //Log.d("Print", "onSensorChanged: Print " + currentTime);
         if (event.sensor == gyroSensor) {
-            if (currentTime - lastUpdate > 0) {   //1st gyro reading in the z-axis
+            if (System.currentTimeMillis() - lastUpdate > 0) {   //1st gyro reading in the z-axis
                 zGyro1 = event.values[2];
-            } else if (currentTime - lastUpdate > 199) {  //2nd gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 199) {  //2nd gyro reading
                 zGyro2 = event.values[2];
-            } else if (currentTime - lastUpdate > 299) {  //3rd gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 299) {  //3rd gyro reading
                 zGyro3 = event.values[2];
-            } else if (currentTime - lastUpdate > 399) {  //4th gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 399) {  //4th gyro reading
                 zGyro4 = event.values[2];
-            } else if (currentTime - lastUpdate > 499) {  //5th gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 499) {  //5th gyro reading
                 zGyro5 = event.values[2];
-            } else if (currentTime - lastUpdate > 599) {  //6th gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 599) {  //6th gyro reading
                 zGyro6 = event.values[2];
-                lastUpdate = currentTime; //Since this is the last reading I want to collect, I reset the time counter to 0
+                lastUpdate = System.currentTimeMillis(); //Since this is the last reading I want to collect, I reset the time counter to 0
                 //by having it equal to the currentTime
-            } else if (currentTime - lastUpdate > 699) {  //7th gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 699) {  //7th gyro reading
                 zGyro7 = event.values[2];
                 lastUpdate = currentTime;
-            } else if (currentTime - lastUpdate > 799) {  //8th gyro reading
+            } else if (System.currentTimeMillis() - lastUpdate > 799) {  //8th gyro reading
                 zGyro8 = event.values[2];
                 lastUpdate = currentTime;
             }
@@ -247,11 +254,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             //lastGyro = filter(event.values.cl, lastGyro); //Attempt to filter results
             //The accuracy can be adjusted by getting more readings and adding them to the average
-            zGyro = ((zGyro1 + zGyro2 + zGyro3 + zGyro4 + zGyro5 + zGyro6 + zGyro7) / 6.35) * -(180.0 / 3.14);
+            zGyro = ((zGyro1 + zGyro2 + zGyro3 + zGyro4 + zGyro5 + zGyro6 + zGyro7) / 6) * -(180.0 / 3.14);
             currentDirection += zGyro;  //Add changes in direction to the currentDirection
+            //Log.d("direction", "onSensorChanged: " + currentDirection);
             //Log.d("tagTest", "onSensorChanged: " + zGyro);    //For debugging purposes
 
-        }
+        }*/
 
 
 

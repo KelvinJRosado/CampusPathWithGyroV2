@@ -60,17 +60,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private float[] orientation = new float[3];
     private float currentAngle = 0f;
     private double zGyro;
-    private double yGyro;
-    private double xGyro;
+    private double zGyroTotal;
+    private boolean getCompass = false;
     private double currentDirection;
     private final float ALPHA = (float) 0.25;
     private int sensorChanged;
+    long currentTime, nextTime;
 
     private GeomagneticField geomagneticField;
 
     private ArrayList<LatLng> userPath;
 
-    private double stepLength = 0.839216;//0.6923532;//0.7099996;//<-Sleepy's step, based off of calculations with a ruler: Kelvin's step ->0.6923532; in meters
+    private double stepLength = 0.7088336;//<-Sleepy's step, based off of calculations with a ruler: Kelvin's step ->0.6923532; in meters
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,7 +87,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         init();//Initialize objects
-
 
     }
 
@@ -198,15 +198,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         //The phone will have 30 tries to find the direction the phone is pointing
-        if (sensorChanged < 30) {
-            if (accelSet && magnetSet && geomagneticField != null) {
+        if (sensorChanged < 30 || getCompass == true) {
+            if (accelSet && magnetSet && geomagneticField != null && getCompass == true) {
+                for (int i = 0; i < 5; i++) {
+                    SensorManager.getRotationMatrix(rotation, null, lastAccel, lastMagnet);
+                    SensorManager.getOrientation(rotation, orientation);
+
+                    float azimuthRadians = orientation[0];
+                    currentAngle = ((float) (Math.toDegrees(azimuthRadians) + 360) % 360) - geomagneticField.getDeclination();
+                    currentDirection = currentAngle;
+
+                    Log.d("direction", "init: " + currentDirection); //For debugging purposes
+                }
+                getCompass = false;
+            }
+            else if (accelSet && magnetSet && geomagneticField != null) {
                 SensorManager.getRotationMatrix(rotation, null, lastAccel, lastMagnet);
                 SensorManager.getOrientation(rotation, orientation);
 
                 float azimuthRadians = orientation[0];
                 currentAngle = ((float) (Math.toDegrees(azimuthRadians) + 360) % 360) - geomagneticField.getDeclination();
                 currentDirection = currentAngle;
-                //Log.d("direction", "init: Hello World " + currentAngle); //For debugging purposes
             }
 
         }
@@ -214,52 +226,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         //double readings = event.values[2];
 
         if (event.sensor == gyroSensor) {
-            zGyro = (event.values[2] / 5.69) * -(180.0 / Math.PI);
-            currentDirection += zGyro;
-            //Log.d("Print", "onSensorChanged: " + zGyro);
-        }
+            if (event.values[2] <= -0.06 || event.values[2] >= 0.06) {  //Filter out these results
+                zGyro = (event.values[2] / 5.89111) * -(180.0 / Math.PI); //The smaller the number, the more sensitive the results are
+                currentDirection += zGyro;
+                zGyroTotal += zGyro;    //Stores how much movement the gyroscopes have detected
+                if ((45 % zGyroTotal) == 45) {  //If the gyroscopes have moved more than 45 degrees
+                    zGyroTotal = 0;             //We check the direction using the magnet meter
+                    getCompass = true;          //Allows us to check the magnet meter
+                    //Log.d("Print", "onSensorChanged: zGyro: " + zGyroTotal + " zGyroMod: " + (60 % zGyroTotal));  //For testing purposes
+                }
 
-        /*
-        //This is where the gyroscope in the z axis is calculated
-        long currentTime = System.currentTimeMillis();  //Keeps track of the system time
-        long lastUpdate = currentTime - System.currentTimeMillis();    //This will keep track of how much time has passed between readings
-        long updateTime = System.nanoTime();
-        //Log.d("Print", "onSensorChanged: " + lastUpdate);
-        //These are where the different gyro readings are held
-        double zGyro1 = 0, zGyro2 = 0, zGyro3 = 0, zGyro4 = 0, zGyro5 = 0, zGyro6 = 0, zGyro7 = 0, zGyro8 = 0;
-        //Log.d("Print", "onSensorChanged: Print " + currentTime);
-        if (event.sensor == gyroSensor) {
-            if (System.currentTimeMillis() - lastUpdate > 0) {   //1st gyro reading in the z-axis
-                zGyro1 = event.values[2];
-            } else if (System.currentTimeMillis() - lastUpdate > 199) {  //2nd gyro reading
-                zGyro2 = event.values[2];
-            } else if (System.currentTimeMillis() - lastUpdate > 299) {  //3rd gyro reading
-                zGyro3 = event.values[2];
-            } else if (System.currentTimeMillis() - lastUpdate > 399) {  //4th gyro reading
-                zGyro4 = event.values[2];
-            } else if (System.currentTimeMillis() - lastUpdate > 499) {  //5th gyro reading
-                zGyro5 = event.values[2];
-            } else if (System.currentTimeMillis() - lastUpdate > 599) {  //6th gyro reading
-                zGyro6 = event.values[2];
-                lastUpdate = System.currentTimeMillis(); //Since this is the last reading I want to collect, I reset the time counter to 0
-                //by having it equal to the currentTime
-            } else if (System.currentTimeMillis() - lastUpdate > 699) {  //7th gyro reading
-                zGyro7 = event.values[2];
-                lastUpdate = currentTime;
-            } else if (System.currentTimeMillis() - lastUpdate > 799) {  //8th gyro reading
-                zGyro8 = event.values[2];
-                lastUpdate = currentTime;
             }
-            //The sensitivity can be adjusted by messing with the time in the if statements
-
-            //lastGyro = filter(event.values.cl, lastGyro); //Attempt to filter results
-            //The accuracy can be adjusted by getting more readings and adding them to the average
-            zGyro = ((zGyro1 + zGyro2 + zGyro3 + zGyro4 + zGyro5 + zGyro6 + zGyro7) / 6) * -(180.0 / 3.14);
-            currentDirection += zGyro;  //Add changes in direction to the currentDirection
-            //Log.d("direction", "onSensorChanged: " + currentDirection);
-            //Log.d("tagTest", "onSensorChanged: " + zGyro);    //For debugging purposes
-
-        }*/
+        }
 
 
 

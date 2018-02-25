@@ -10,10 +10,13 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
+import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.Toast;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -28,6 +31,10 @@ import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.maps.android.SphericalUtil;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 
 import static android.Manifest.permission.ACCESS_FINE_LOCATION;
@@ -40,17 +47,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     [2] https://www.built.io/blog/applying-low-pass-filter-to-android-sensor-s-readings
     */
 
+    private final float ALPHA = (float) 0.25;
+    //Reference to context
+    Context thisContext = this;
+    long currentTime, nextTime;
     //Map API
     private FusedLocationProviderClient fusedLocationProviderClient;//Gets starting location
     private GoogleMap googleMap;//Reference to map
-
-    //Reference to context
-    Context thisContext = this;
-
     //Sensors
     private SensorManager sensorManager;
     private Sensor stepSensor;
-
     //Gravity and rotation info; Used for calculating orientation
     private Sensor accelSensor, magnetSensor, gyroSensor;
     private float[] lastAccel = new float[3];
@@ -63,13 +69,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private double zGyroTotal;
     private boolean getCompass = false;
     private double currentDirection;
-    private final float ALPHA = (float) 0.25;
     private int sensorChanged;
-    long currentTime, nextTime;
-
     private GeomagneticField geomagneticField;
 
-    private ArrayList<LatLng> userPath;
+    private ArrayList<TimedLocation> userPath;
+
+    private Button btSendPath;
 
     private double stepLength = 0.7088336;//<-Sleepy's step, based off of calculations with a ruler: Kelvin's step ->0.6923532; in meters
 
@@ -116,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(start, 20.0f));
 
                     //Add start location to buffer
-                    userPath.add(start);
+                    userPath.add(new TimedLocation((start)));
 
                     //Get declination for finding true north
                     geomagneticField = new GeomagneticField((float) location.getLatitude(),
@@ -160,6 +165,59 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         magnetSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
         accelSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+
+        btSendPath = findViewById(R.id.btSendTest);
+
+        btSendPath.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                //Serialize list of points
+                ArrayList<JSONObject> pathTemp = new ArrayList<>();
+
+                for (int i = 0; i < userPath.size(); i += 2) {
+                    try {
+                        JSONObject temp = new JSONObject();
+                        temp.put("Latitude", userPath.get(i).getLocation().latitude);
+                        temp.put("Longitude", userPath.get(i).getLocation().longitude);
+                        temp.put("Time", userPath.get(i).getTimeStamp());
+
+                        pathTemp.add(temp);
+
+                    } catch (JSONException e) {
+                        //Exit on JSON error
+                        e.printStackTrace();
+                        Toast.makeText(thisContext, e.getMessage(), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+
+                JSONArray pathJSON = new JSONArray(pathTemp);
+
+                String st = "'" + pathJSON.toString() + "'";
+
+                //Send to database
+                String query = "INSERT INTO My_Test_Table (User_Path)" +
+                        " VALUES (" + st.toString() + ");";
+                new DatabaseConnection(query).execute();
+
+                //Clear map and buffer
+                googleMap.clear();
+
+                TimedLocation temp = userPath.get(userPath.size() - 1);//Take last point of previous path as start of next
+                userPath.clear();
+                userPath.add(temp);
+
+                googleMap.addMarker(new MarkerOptions().position(temp.getLocation()).title("Start location"));
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(temp.getLocation(), 20.0f));
+
+                //Notify user of success or failure
+                String ss = "Path sent to server";
+                Toast.makeText(thisContext, ss, Toast.LENGTH_SHORT).show();
+
+
+            }
+        });
 
     }
 
@@ -245,15 +303,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (event.sensor == stepSensor && userPath.size() >= 1) {
 
 
-            LatLng lastLocation = userPath.get(userPath.size() - 1);
+            LatLng lastLocation = userPath.get(userPath.size() - 1).getLocation();
 
             //Calculate new LatLng
             LatLng currentPos = SphericalUtil.computeOffset(lastLocation, stepLength, currentDirection);
 
             //Draw a line between last and current positions
-            Polyline line = googleMap.addPolyline(new PolylineOptions().add(lastLocation, currentPos).width(25).color(Color.RED));
+            Polyline line = googleMap.addPolyline(new PolylineOptions().add(lastLocation, currentPos).width(10).color(Color.RED));
 
-            userPath.add(currentPos);
+            //Move map to new location
+            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentPos, 20.0f));
+
+            userPath.add(new TimedLocation(currentPos));
 
         }
 
